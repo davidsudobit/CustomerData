@@ -43,6 +43,8 @@ public class CsvProcessorService {
 	private static LinkedHashMap<String, List<String[]>> accountData;
 	
 	private static LinkedHashMap<String,List<String[]>> summaryData;
+	
+	private static LinkedHashMap<String, String> headingsTranslation;
 		
 	@Async
 	public void generatePdf(PathData pathData) throws Exception {
@@ -52,6 +54,7 @@ public class CsvProcessorService {
 		
 		processCustomerDataCustom(pathData.getAccountDataCsv());
 		processSummaryDataCustom(pathData.getSummaryDataCsv());
+		translationMapper();
 		
 		List<CustomerData> customerDatas=null;
 		
@@ -77,21 +80,21 @@ public class CsvProcessorService {
 		
 		System.out.print("\n<<<<< PDF Generation Started >>>>>\n");
 		
-//		System.out.println("\n"+pdfService.generatePdf(pathData, customerDatas.get(0))+"\n");
+		System.out.println("\n"+pdfService.generatePdf(pathData, customerDatas.get(0))+"\n");
 		
-		customerDatas.forEach(customerData->{
-			
-			try {
-				
-				System.out.print("\n"+pdfService.generatePdf(pathData, customerData)+"\n");
-				
-			} catch (Exception e) {
-				
-				System.out.printf("Error Generating PDF : [ %s ]", pathData.getDestPdfPath()+String.format("%s_%s.pdf", customerData.getSsn(),customerData.getSummaryData().getSummaryYear()));
-				
-			}
-			
-		});
+//		customerDatas.forEach(customerData->{
+//			
+//			try {
+//				
+//				System.out.print("\n"+pdfService.generatePdf(pathData, customerData)+"\n");
+//				
+//			} catch (Exception e) {
+//				
+//				System.out.printf("Error Generating PDF : [ %s ]", pathData.getDestPdfPath()+String.format("%s_%s.pdf", customerData.getSsn(),customerData.getSummaryData().getSummaryYear()));
+//				
+//			}
+//			
+//		});
 		
 		System.out.print("\n<<<<< PDF Generation Completed >>>>>\n");
 		
@@ -174,6 +177,8 @@ public class CsvProcessorService {
 		
 		Integer savingsAccountIndexes[]=loadIndexesForAccount(accountDataHeadings, headingsConfig.getSavingsAccount());
 		Integer loanAccountIndexes[]=loadIndexesForAccount(accountDataHeadings, headingsConfig.getLoanAccount());
+		Integer tillvaxtAccountIndexes[]=loadIndexesForAccount(accountDataHeadings, headingsConfig.getTillVaxtAccount());
+		Integer borsAccountIndexes[]=loadIndexesForAccount(accountDataHeadings, headingsConfig.getBorsAccount());
 		
 		return inputData.stream().map(datas->{
 			
@@ -186,94 +191,133 @@ public class CsvProcessorService {
 			accountData.setAccountName(String.join(" ", datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getProductText())], accountId));
 			accountData.setDataHolder(listOfData);
 			
-			String customerAccountType=
-					datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())].toLowerCase().contains("SparKonto".toLowerCase())?"sparkonto":
-						datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())].toLowerCase().contains("Banklån".toLowerCase())?"banklån":
-							datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())];
+//			String customerAccountType=
+//					datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())].toLowerCase().contains("SparKonto".toLowerCase())?"sparkonto":
+//						datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())].toLowerCase().contains("Banklån".toLowerCase())?"banklån":
+//							datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())];
+			
+			String customerAccountType=datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getEngagementType())];
+			String productText=datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getProductText())];
 			
 			switch(customerAccountType) {
 				
-				case "sparkonto" -> {
+				case "D" -> {
 					
-					for(int i=0;i<savingsAccountIndexes.length-2;i++) {
-						
-						Integer indexToFetch=savingsAccountIndexes[i];
-						
-						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
-							
-							datas[indexToFetch]=formatData(datas[indexToFetch]);
-							
-						}else {
-							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
-						}
-						
-						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), (i==0)?datas[indexToFetch]+"%":datas[indexToFetch]));
-						
-					}
-					
-					Integer indexToFetch=savingsAccountIndexes.length;
-					
-					accountData.setBalanceShare(formatData(datas[savingsAccountIndexes[indexToFetch-2]]));
-					accountData.setInterestShare(formatData(datas[savingsAccountIndexes[indexToFetch-1]]));
-					
-					break;
+					savingsAccount(accountData, datas, savingsAccountIndexes);
 					
 				}
 				
-				case "banklån" -> {
+				case "T" -> {
 					
-					for(int i=0;i<loanAccountIndexes.length-2;i++) {
+					if(productText.toLowerCase().contains("TILLVÄXT".toLowerCase())) {
 						
-						Integer indexToFetch=loanAccountIndexes[i];
-						
-						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
-							
-							datas[indexToFetch]=formatData(datas[indexToFetch]);
-							
-						}else {
-							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
-						}
-						
-						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), datas[indexToFetch]));
+						tillvaxtAccount(accountData, datas, tillvaxtAccountIndexes);
 						
 					}
-					
-					Integer indexToFetch=loanAccountIndexes.length;
-					
-					accountData.setBalanceShare(formatData(datas[loanAccountIndexes[indexToFetch-2]]));
-					accountData.setInterestShare(formatData(datas[loanAccountIndexes[indexToFetch-1]]));
-					
-					break;
+					else if(productText.toLowerCase().contains("BÖRS".toLowerCase())) {
+						
+						borsAccount(accountData, datas, borsAccountIndexes);
+						
+					}
+					else if(productText.toLowerCase().contains("SPARKONTO FIX".toLowerCase())||productText.toLowerCase().contains("SPARKTO FIX".toLowerCase())||productText.toLowerCase().contains("FÖRETAGSKTO FIX".toLowerCase())) {
+						
+						savingsAccount(accountData, datas, savingsAccountIndexes);
+						
+					}
 					
 				}
 				
-				default ->{
+				case "L" -> {
 					
-					for(int i=0;i<loanAccountIndexes.length-2;i++) {
-						
-						Integer indexToFetch=loanAccountIndexes[i];
-						
-						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
-							
-							datas[indexToFetch]=formatData(datas[indexToFetch]);
-							
-						}else {
-							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
-						}
-						
-						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), datas[indexToFetch]));
-						
-					}
-					
-					Integer indexToFetch=loanAccountIndexes.length;
-					
-					accountData.setBalanceShare(formatData(datas[loanAccountIndexes[indexToFetch-2]]));
-					accountData.setInterestShare(formatData(datas[loanAccountIndexes[indexToFetch-1]]));
+					loanAccount(accountData, datas, loanAccountIndexes);
 					
 				}
-					
 			
 			};
+			
+//			switch(customerAccountType) {
+//				
+//				case "sparkonto" -> {
+//					
+//					for(int i=0;i<savingsAccountIndexes.length-2;i++) {
+//						
+//						Integer indexToFetch=savingsAccountIndexes[i];
+//						
+//						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+//							
+//							datas[indexToFetch]=formatData(datas[indexToFetch]);
+//							
+//						}else {
+//							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+//						}
+//						
+//						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), (i==0)?datas[indexToFetch]+"%":datas[indexToFetch]));
+//						
+//					}
+//					
+//					Integer indexToFetch=savingsAccountIndexes.length;
+//					
+//					accountData.setBalanceShare(formatData(datas[savingsAccountIndexes[indexToFetch-2]]));
+//					accountData.setInterestShare(formatData(datas[savingsAccountIndexes[indexToFetch-1]]));
+//					
+//					break;
+//					
+//				}
+//				
+//				case "banklån" -> {
+//					
+//					for(int i=0;i<loanAccountIndexes.length-2;i++) {
+//						
+//						Integer indexToFetch=loanAccountIndexes[i];
+//						
+//						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+//							
+//							datas[indexToFetch]=formatData(datas[indexToFetch]);
+//							
+//						}else {
+//							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+//						}
+//						
+//						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), datas[indexToFetch]));
+//						
+//					}
+//					
+//					Integer indexToFetch=loanAccountIndexes.length;
+//					
+//					accountData.setBalanceShare(formatData(datas[loanAccountIndexes[indexToFetch-2]]));
+//					accountData.setInterestShare(formatData(datas[loanAccountIndexes[indexToFetch-1]]));
+//					
+//					break;
+//					
+//				}
+//				
+//				default ->{
+//					
+//					for(int i=0;i<loanAccountIndexes.length-2;i++) {
+//						
+//						Integer indexToFetch=loanAccountIndexes[i];
+//						
+//						if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+//							
+//							datas[indexToFetch]=formatData(datas[indexToFetch]);
+//							
+//						}else {
+//							datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+//						}
+//						
+//						listOfData.add(new DataHolder(accountDataHeadings.get(indexToFetch), datas[indexToFetch]));
+//						
+//					}
+//					
+//					Integer indexToFetch=loanAccountIndexes.length;
+//					
+//					accountData.setBalanceShare(formatData(datas[loanAccountIndexes[indexToFetch-2]]));
+//					accountData.setInterestShare(formatData(datas[loanAccountIndexes[indexToFetch-1]]));
+//					
+//				}
+//					
+//			
+//			};
 			
 //			if(datas[getIndexOfHeading(accountDataHeadings,headingsConfig.getProductText())].toLowerCase().contains("SparKonto".toLowerCase())) {
 //				
@@ -422,6 +466,122 @@ public class CsvProcessorService {
 		
 	}
 	
+	private void savingsAccount(AccountData accountData, String[] datas, Integer[] savingsAccountIndexes) {
+		
+		List<DataHolder> listOfData=accountData.getDataHolder();
+		
+		for(int i=0;i<savingsAccountIndexes.length-2;i++) {
+			
+			Integer indexToFetch=savingsAccountIndexes[i];
+			
+			if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+				
+				datas[indexToFetch]=formatData(datas[indexToFetch]);
+				
+			}else {
+				datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+			}
+			
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(indexToFetch), "HeadingDefault"), (i==0)?datas[indexToFetch]+"%":datas[indexToFetch]));
+			
+		}
+		
+		Integer indexToFetch=savingsAccountIndexes.length;
+		
+		accountData.setBalanceShare(formatData(datas[savingsAccountIndexes[indexToFetch-2]]));
+		accountData.setInterestShare(formatData(datas[savingsAccountIndexes[indexToFetch-1]]));
+		
+		ifAccountClosed(datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getStatusText())], accountData);
+		
+	}
+	
+	private void loanAccount(AccountData accountData, String[] datas, Integer[] loanAccountIndexes) {
+		
+		List<DataHolder> listOfData=accountData.getDataHolder();
+		
+		for(int i=0;i<loanAccountIndexes.length-2;i++) {
+			
+			Integer indexToFetch=loanAccountIndexes[i];
+			
+			if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+				
+				datas[indexToFetch]=formatData(datas[indexToFetch]);
+				
+			}else {
+				datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+			}
+			
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(indexToFetch), "HeadingDefault"), datas[indexToFetch]));
+			
+		}
+		
+		Integer indexToFetch=loanAccountIndexes.length;
+		
+		accountData.setBalanceShare(formatData(datas[loanAccountIndexes[indexToFetch-2]]));
+		accountData.setInterestShare(formatData(datas[loanAccountIndexes[indexToFetch-1]]));
+		
+		ifAccountClosed(datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getStatusText())], accountData);
+		
+	}
+	
+	private void tillvaxtAccount(AccountData accountData, String[] datas, Integer[] tillvaxtAccountIndexes) {
+		
+		List<DataHolder> listOfData=accountData.getDataHolder();
+		
+		if(isAccountClosed(datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getStatusText())]) || Double.valueOf(datas[getIndexOfHeading(accountDataHeadings, "ReceivedInterest")])>0 || Double.valueOf(datas[getIndexOfHeading(accountDataHeadings, "PreliminaryTax")])>0) {
+			
+			for(int i=0;i<tillvaxtAccountIndexes.length-2;i++) {
+				
+				Integer indexToFetch=tillvaxtAccountIndexes[i];
+				
+				if(!(accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getCapitalSharePercentage())||accountDataHeadings.get(indexToFetch).equalsIgnoreCase(headingsConfig.getReceivedInterestSharePercentage()))) {
+					
+					datas[indexToFetch]=formatData(datas[indexToFetch]);
+					
+				}else {
+					datas[indexToFetch]=String.format("%.0f", Double.parseDouble(datas[indexToFetch]));
+				}
+				
+				listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(indexToFetch), "HeadingDefault"), datas[indexToFetch]));
+				
+			}
+			
+			Integer indexToFetch=tillvaxtAccountIndexes.length;
+			
+			accountData.setBalanceShare(formatData(datas[tillvaxtAccountIndexes[indexToFetch-2]]));
+			accountData.setInterestShare(formatData(datas[tillvaxtAccountIndexes[indexToFetch-1]]));
+			
+		}
+		else {
+			
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(getIndexOfHeading(accountDataHeadings, "Balance")), "HeadingDefault"), formatData(datas[getIndexOfHeading(accountDataHeadings, "Balance")])));
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(getIndexOfHeading(accountDataHeadings, headingsConfig.getCapitalSharePercentage())), "HeadingDefault"), String.format("%.0f", Double.parseDouble(datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getCapitalSharePercentage())]))));
+			
+			Integer indexToFetch=tillvaxtAccountIndexes.length;
+			accountData.setBalanceShare(formatData(datas[tillvaxtAccountIndexes[indexToFetch-2]]));
+			
+		}
+		
+	}
+	
+	private void borsAccount(AccountData accountData, String[] datas, Integer[] borsAccountIndexes) {
+		
+		List<DataHolder> listOfData=accountData.getDataHolder();
+		
+		if(isAccountClosed(datas[getIndexOfHeading(accountDataHeadings, headingsConfig.getStatusText())])) {
+			
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(getIndexOfHeading(accountDataHeadings, "InterestOverDesk")), "HeadingDefault"), formatData(datas[getIndexOfHeading(accountDataHeadings, "InterestOverDesk")])));
+			listOfData.add(new DataHolder("Kapitalvinst", formatData(datas[getIndexOfHeading(accountDataHeadings, "ReceivedInterest")])));
+			
+		}
+		else {
+			
+			listOfData.add(new DataHolder(headingsTranslation.getOrDefault(accountDataHeadings.get(getIndexOfHeading(accountDataHeadings, "Balance")), "HeadingDefault"), formatData(datas[getIndexOfHeading(accountDataHeadings, "Balance")])));
+			
+		}
+		
+	}
+	
 	private Integer[] loadIndexesForAccount(List<String> headings, String targetHeadings) {
 		
 		String accountHeaders[]= targetHeadings.split(",");
@@ -445,6 +605,22 @@ public class CsvProcessorService {
 		}
 		
 		return accountIndexes;
+		
+	}
+	
+	private boolean isAccountClosed(String statusText) {
+		
+		return statusText.equalsIgnoreCase("AVSLUTAD")||statusText.equalsIgnoreCase("AVSLUTAT");
+		
+	}
+	
+	private void ifAccountClosed(String statusText, AccountData accountData) {
+		
+		if(statusText.equalsIgnoreCase("AVSLUTAD")||statusText.equalsIgnoreCase("AVSLUTAT")) {
+			
+			accountData.getDataHolder().add(new DataHolder("Kontot avslutat", ""));
+			
+		}
 		
 	}
 	
@@ -534,6 +710,26 @@ public class CsvProcessorService {
     	throw new NullPointerException("Pathdata is null");
     	
     }
+	
+	private void translationMapper() {
+		
+		if(headingsTranslation!=null) return;
+		
+		headingsTranslation=new LinkedHashMap<>();
+		
+		headingsTranslation.put("Interest1", "Aktuell räntesats");
+		headingsTranslation.put("ReceivedInterest", "Inkomstränta");
+		headingsTranslation.put("Balance", "Tillgodohavande");
+		headingsTranslation.put("PreliminaryTax", "Preliminärskatt");
+		headingsTranslation.put("CapitalSharePercentage", "Din andel av kapital");
+		headingsTranslation.put("ReceivedInterestSharePercentage", "Din andel av ränta");
+		headingsTranslation.put("BalanceShare", "");
+		headingsTranslation.put("ReceivedInterestShare", "");
+		headingsTranslation.put("PaidInterest", "Utgiftsränta");
+		headingsTranslation.put("Debth", "Skuld");
+		headingsTranslation.put("InterestOverDesk", "Utbetalt belopp");
+		
+	}
 	
 //	private Path makeCsvFile(List<String> inputLines, String destPath) throws IOException {
 //		

@@ -49,18 +49,18 @@
 			
 				<div th:each="data : ${customerData?.dataHolder}">
 	
-					<div style="padding: 3px 0px;" class="data-list" th:if="${not (#strings.equals(data?.dataHeader,'CapitalSharePercentage')||#strings.equals(data?.dataHeader,'ReceivedInterestSharePercentage'))}">
+					<div style="padding: 3px 0px;" class="data-list" th:if="${not (#strings.equals(data?.dataHeader,'Din andel av kapital')||#strings.equals(data?.dataHeader,'Din andel av ränta'))}">
 						<div style="position: relative; display: inline-block; text-align: left; width: 50%" th:text="${data?.dataHeader}"></div>
 						<div style="position: relative; display: inline-block; text-align: right; width: 49%;" th:text="${data?.dataContent}"></div>
 					</div>
 					
-					<div style="padding: 3px 0px;" class="data-list" th:if="${#strings.equals(data?.dataHeader,'CapitalSharePercentage')}">
+					<div style="padding: 3px 0px;" class="data-list" th:if="${#strings.equals(data?.dataHeader,'Din andel av kapital')}">
 						<div style="position: relative; display: inline-block; text-align: left; width: 50%" th:text="${data?.dataHeader} + ' : ' + ${data?.dataContent}+'%'"></div>
 						<div style="position: relative; display: inline-block; text-align: right; width: 49%;" th:text="${customerData?.balanceShare}"></div>
 					</div>
 					
 					<div style="background-color: lightgrey; font-style: italic; font-weight: bold; padding: 3px 0px;" class="data-list"
-						 th:if="${#strings.equals(data?.dataHeader,'ReceivedInterestSharePercentage')}">
+						 th:if="${#strings.equals(data?.dataHeader,'Din andel av ränta')}">
 						<div style="position: relative; display: inline-block; text-align: left; width: 50%" th:text="${data?.dataHeader} + ' : ' + ${data?.dataContent}+'%'"></div>
 						<div style="position: relative; display: inline-block; text-align: right; width: 49%;" th:text="${customerData?.interestShare}"></div>
 					</div>

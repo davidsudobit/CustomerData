@@ -27,11 +27,23 @@ public class Headings {
 	@Value("${target.headings.loan_account}")
 	private String loanAccount;
 	
+	@Value("${target.headings.tillvaxt_account}")
+	private String tillVaxtAccount;
+	
+	@Value("${target.headings.bors_account}")
+	private String borsAccount;
+	
 	@Value("${target.heading.ssn}")
 	private String ssn;
 	
 	@Value("${target.heading.engagement_number}")
 	private String engagementNumber;
+	
+	@Value("${target.heading.engagement_type}")
+	private String engagementType;
+	
+	@Value("${target.heading.status_text}")
+	private String statusText;
 	
 	@Value("${target.heading.product_text}")
 	private String productText;
